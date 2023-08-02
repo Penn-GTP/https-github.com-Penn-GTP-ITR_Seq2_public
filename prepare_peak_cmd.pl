@@ -16,9 +16,7 @@ my $samtools = 'samtools';
 my $bedtools = 'bedtools';
 #my $picard = 'picard.jar';
 my $insert_script = 'get_ITR_insert_site.pl';
-my $extract_script = 'extract_insert_site_flank_seq.pl';
-my $aligner = 'water';
-my $filter_script = 'filter_insert_site.pl';
+my $space_script = 'get_ITR_primer_softclip_space.pl';
 my $peak_script = 'get_ITR_peak.pl';
 my $clone_script = 'get_ITR_clone.pl';
 my $cmd = "$0 " . join(" ", @ARGV);
@@ -36,6 +34,7 @@ my $INSERT_SIZE = $design->get_global_opt('INSERT_SIZE');
 my $KEEP_UNPAIR = $design->get_global_opt('KEEP_UNPAIR');
 my $KEEP_STRAND = $design->get_global_opt('KEEP_STRAND');
 my $MAX_PEAK_DIST = $design->get_global_opt('MAX_PEAK_DIST');
+my $MIN_SPACE = $design->get_global_opt('MIN_SPACE');
 
 my $DEFAULT_MIN_CLONE_LOC = 2;
 
@@ -66,7 +65,8 @@ foreach my $sample ($design->get_sample_names()) {
 # prepare get ITR insert site cmd
 	{
 		my $in = $design->get_sample_ref_novec_file($sample);
-		my $out = $design->get_sample_ref_insert_site($sample); 
+		my $loc_out = $design->get_sample_ref_insert_site($sample); 
+		my $pos_out = $design->get_sample_ref_softclip_pos($sample); 
 		my $primer_file = $design->get_global_primer_fwd();
 		my $clip_len = 0;
 		my $seq_in = new Bio::SeqIO(-file => "<$BASE_DIR/$primer_file", -format => 'fasta');
@@ -76,8 +76,24 @@ foreach my $sample ($design->get_sample_names()) {
 			}
 		}
 
-		my $cmd = "$SCRIPT_DIR/$insert_script $BASE_DIR/$in $WORK_DIR/$out --insert-size $INSERT_SIZE --min-softclip $clip_len";
+		my $cmd = "$SCRIPT_DIR/$insert_script $BASE_DIR/$in $WORK_DIR/$loc_out $WORK_DIR/$pos_out --insert-size $INSERT_SIZE --min-softclip $clip_len";
 
+		if(!(-e "$WORK_DIR/$loc_out" && -e "$WORK_DIR/$pos_out")) {
+			print OUT "$cmd\n";
+		}
+		else {
+			print STDERR "Warning: $WORK_DIR/$loc_out, $WORK_DIR/$pos_out exist, won't override\n";
+			print OUT "# $cmd\n";
+		}
+	}
+
+# prepare primer softclip space cmd
+  {
+		my $trim_in = $design->get_sample_ITRtrim_pos($sample);
+		my $clip_in = $design->get_sample_ref_softclip_pos($sample);
+
+		my $out = $design->get_sample_ref_primer_softclip_space($sample);
+		my $cmd = "$SCRIPT_DIR/$space_script $WORK_DIR/$trim_in $WORK_DIR/$clip_in $WORK_DIR/$out";
 		if(!-e "$WORK_DIR/$out") {
 			print OUT "$cmd\n";
 		}
@@ -87,11 +103,13 @@ foreach my $sample ($design->get_sample_names()) {
 		}
 	}
 
-# prepare insert site sorted cmd
+# prepare filter insert site cmd
   {
 		my $in = $design->get_sample_ref_insert_site($sample);
-		my $out = $design->get_sample_ref_insert_site_sorted($sample);
-		my $cmd = "$bedtools sort -i $WORK_DIR/$in > $WORK_DIR/$out";
+		my $space = $design->get_sample_ref_primer_softclip_space($sample);
+		my $out = $design->get_sample_ref_insert_site_filtered($sample);
+
+		my $cmd = "awk 'BEGIN{FS=\"\\t\"} (NR == FNR && FNR > 1 && \$6 != \"NA\" && \$6 >= $MIN_SPACE) {ID[\$1]; next} (\$4 in ID)' $WORK_DIR/$space $WORK_DIR/$in > $WORK_DIR/$out";
 		if(!-e "$WORK_DIR/$out") {
 			print OUT "$cmd\n";
 		}
@@ -103,10 +121,10 @@ foreach my $sample ($design->get_sample_names()) {
 
 # prepare insert site uniq cmd
   {
-		my $in = $design->get_sample_ref_insert_site_sorted($sample);
+		my $in = $design->get_sample_ref_insert_site($sample);
 		my $out = $design->get_sample_ref_insert_site_uniq($sample);
 
-		my $cmd = "if [ -s $WORK_DIR/$in ]; then $bedtools merge -d -$INSERT_SIZE -c 4,5,6 -o collapse,sum,collapse -i $WORK_DIR/$in > $WORK_DIR/$out ; else cp $WORK_DIR/$in $WORK_DIR/$out ; fi;";
+		my $cmd = "if [ -s $WORK_DIR/$in ]; then $bedtools sort -i $WORK_DIR/$in | $bedtools merge -d -$INSERT_SIZE -c 4,5,6 -o collapse,sum,collapse -i - > $WORK_DIR/$out ; else cp $WORK_DIR/$in $WORK_DIR/$out ; fi;";
 
 		if(!-e "$WORK_DIR/$out") {
 			print OUT "$cmd\n";
@@ -117,91 +135,25 @@ foreach my $sample ($design->get_sample_names()) {
 		}
 	}
 
-# prepare extract insert site flank cmd
-	{
-		my $db = $design->sample_opt($sample, 'genome_seq');
-		my $in = $design->get_sample_ref_insert_site_uniq($sample);
-		my $seq_out = $design->get_sample_ref_insert_site_flank_seq($sample);
-		my $name_out = $design->get_sample_ref_insert_site_name2loc($sample);
-		my $ext_len = $design->get_global_opt('PRIMER_FLANK');
-		my $cmd = "$SCRIPT_DIR/$extract_script $db $WORK_DIR/$in $WORK_DIR/$seq_out $WORK_DIR/$name_out --ext-len $ext_len";
+# prepare insert site filtered uniq cmd
+  {
+		my $in = $design->get_sample_ref_insert_site_filtered($sample);
+		my $out = $design->get_sample_ref_insert_site_filtered_uniq($sample);
 
-		if(!(-e "$WORK_DIR/$seq_out" && -e "$WORK_DIR/$name_out")) {
+		my $cmd = "if [ -s $WORK_DIR/$in ]; then $bedtools sort -i $WORK_DIR/$in | $bedtools merge -d -$INSERT_SIZE -c 4,5,6 -o collapse,sum,collapse -i - > $WORK_DIR/$out ; else cp $WORK_DIR/$in $WORK_DIR/$out ; fi;";
+
+		if(!-e "$WORK_DIR/$out") {
 			print OUT "$cmd\n";
 		}
 		else {
-			print STDERR "Warning: $WORK_DIR/$seq_out and $WORK_DIR/$name_out exist, won't override\n";
-			print OUT "# $cmd\n";
-		}
-	}
-
-# prepare insert site flank primer align cmd
-	{
-		my $primer_fwd = $design->get_global_primer_fwd();
-		my $primer_rev = $design->get_global_primer_rev();
-		my $opts = $design->get_global_opt('PRIMER_ALN_OPTS');
-
-		my $in = $design->get_sample_ref_insert_site_flank_seq($sample);
-		my $out_fwd = $design->get_sample_ref_insert_site_flank_fwd_align($sample);
-		my $out_rev = $design->get_sample_ref_insert_site_flank_rev_align($sample);
-		my $cmd = "> $WORK_DIR/$out_fwd \n> $WORK_DIR/$out_rev\n";
-
-		my $in_fwd = new Bio::SeqIO(-file => "<$primer_fwd", -format => 'fasta', -alphabet => 'dna');
-		while(my $seq_fwd = $in_fwd->next_seq()) {
-			my $id = $seq_fwd->id();
-			my $seq = $seq_fwd->seq();
-			$cmd .= "if [ -s $WORK_DIR/$in ]; then echo '$seq' | $aligner -asequence stdin -bsequence $WORK_DIR/$in -auto -sid1 $id -sformat1 plain -stdout $opts >> $WORK_DIR/$out_fwd;";
-			$cmd .= "\nelse >> $WORK_DIR/$out_fwd; fi;\n";
-		}
-	
-		my $in_rev = new Bio::SeqIO(-file => "<$primer_rev", -format => 'fasta', -alphabet => 'dna');
-		while(my $seq_rev = $in_rev->next_seq()) {
-			my $id = $seq_rev->id();
-			my $seq = $seq_rev->seq();
-			$cmd .= "if [ -s $WORK_DIR/$in ]; then echo '$seq' | $aligner -asequence stdin -bsequence $WORK_DIR/$in -auto -sid1 $id -sformat1 plain -stdout $opts >> $WORK_DIR/$out_rev;";
-			$cmd .= "\nelse >> $WORK_DIR/$out_rev; fi;\n";
-		}
-	
-		if(!(-e "$WORK_DIR/$out_fwd" && -e "$WORK_DIR/$out_rev")) {
-			print OUT "$cmd\n";
-		}
-		else {
-			print STDERR "Warning: $WORK_DIR/$out_fwd and $WORK_DIR/$out_rev exist, won't override\n";
-			$cmd =~ s/\n/\n# /sg;
-			print OUT "# $cmd\n";
-		}
-	}
-
-# prepare insert site filtered cmd
-	{
-		my $site_in = $design->get_sample_ref_insert_site_uniq($sample);
-		my $name_in = $design->get_sample_ref_insert_site_name2loc($sample);
-		my $fwd_aln = $design->get_sample_ref_insert_site_flank_fwd_align($sample);
-		my $rev_aln = $design->get_sample_ref_insert_site_flank_rev_align($sample);
-		my $site_out = $design->get_sample_ref_insert_site_filtered($sample);
-		my $info_out = $design->get_sample_ref_insert_site_align_info($sample);
-
-		my $flank_size = $design->get_global_opt('PRIMER_FLANK');
-		my $seed_len = $design->get_global_opt('PRIMER_SEED_LEN');
-		my $primer_file = $design->get_global_primer_fwd();
-		my $max_seed_error = $design->get_global_opt('PRIMER_MAX_SEED_ERROR');
-		my $min_match = $design->get_global_opt('PRIMER_MIN_MATCH');
-		my $cmd = "$SCRIPT_DIR/$filter_script $WORK_DIR/$site_in $WORK_DIR/$name_in $WORK_DIR/$fwd_aln $WORK_DIR/$rev_aln "
-		. "$WORK_DIR/$site_out $WORK_DIR/$info_out "
-		. "--flank-size $flank_size --seed-len $seed_len --primer-file $BASE_DIR/$primer_file --max-seed-error $max_seed_error --min-match $min_match";
-
-		if(!(-e "$WORK_DIR/$site_out" && -e "$WORK_DIR/$info_out")) {
-			print OUT "$cmd\n";
-		}
-		else {
-			print STDERR "Warning: $WORK_DIR/$site_out and $WORK_DIR/$info_out exist, won't override\n";
+			print STDERR "Warning: $WORK_DIR/$out exists, won't override\n";
 			print OUT "# $cmd\n";
 		}
 	}
 
 # prepare insert site merged cmd
   {
-		my $in = $design->get_sample_ref_insert_site_filtered($sample);
+		my $in = $design->get_sample_ref_insert_site_filtered_uniq($sample);
 		my $out = $design->get_sample_ref_insert_site_merged($sample);
 
 		my $cmd = "if [ -s $WORK_DIR/$in ]; then $bedtools merge -d $MAX_PEAK_DIST -c 4,5,6 -o collapse,sum,collapse -i $WORK_DIR/$in > $WORK_DIR/$out ; else cp $WORK_DIR/$in $WORK_DIR/$out ; fi;";
@@ -232,7 +184,7 @@ foreach my $sample ($design->get_sample_names()) {
 
 # prepare call clone cmd
   {
-		my $site_in = $design->get_sample_ref_insert_site_filtered($sample);
+		my $site_in = $design->get_sample_ref_insert_site_filtered_uniq($sample);
 		my $aln_in = $design->get_sample_ref_novec_file($sample);
 		my $out = $design->get_sample_ref_clone($sample);
 		my $min_clone_loc = $design->sample_opt($sample, 'min_clone_loc') ? $design->sample_opt($sample, 'min_clone_loc') : $DEFAULT_MIN_CLONE_LOC;

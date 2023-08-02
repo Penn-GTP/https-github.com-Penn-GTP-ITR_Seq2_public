@@ -21,14 +21,10 @@ our %GLOBAL_OPTS = (
 	UMI_MM => 0,
 	PRIMER_FILE => 'ITR_primer.fa',
 	INSERT_SIZE => 2,
+	MIN_SPACE => 8,
 	KEEP_UNPAIR => 1,
 	KEEP_STRAND => 3,
-	MAX_PEAK_DIST => 44,
-	PRIMER_FLANK => 50,
-	PRIMER_ALN_OPTS => '',
-	PRIMER_SEED_LEN => 10,
-	PRIMER_MAX_SEED_ERROR => 0.1,
-	PRIMER_MIN_MATCH => 12
+	MAX_PEAK_DIST => 44
 );
   
 # Constructor taking a filehandle or a filename
@@ -200,6 +196,12 @@ sub get_sample_rev_ITRshort_file {
 	return "$sample\_R2_short.fastq.gz";
 }
 
+# get per-sample ITRtrim pos
+sub get_sample_ITRtrim_pos {
+	my ($self, $sample) = @_;
+	return "$sample\_ITRtrim_pos.bedpe";
+}
+
 # get per-sample ref map file
 sub get_sample_ref_map_file {
 	my ($self, $sample) = @_;
@@ -260,40 +262,16 @@ sub get_sample_ref_insert_site {
 	return "$sample\_ref_insert_site.bed";
 }
 
-# get per-sample insert site sorted file
-sub get_sample_ref_insert_site_sorted {
+# get per-sample softclip pos
+sub get_sample_ref_softclip_pos {
 	my ($self, $sample) = @_;
-	return "$sample\_ref_insert_site_sorted.bed";
+	return "$sample\_ref_softclip_pos.bed";
 }
 
-# get per-sample ref insert site sorted uniq file
-sub get_sample_ref_insert_site_uniq {
+# get per-sample primer-softclip space
+sub get_sample_ref_primer_softclip_space {
 	my ($self, $sample) = @_;
-	return "$sample\_ref_insert_site_sorted_uniq.bed";
-}
-
-# get per-sample insert site flank seq
-sub get_sample_ref_insert_site_flank_seq {
-	my ($self, $sample) = @_;
-	return "$sample\_ref_insert_site_flank_seq.fasta";
-}
-
-# get per-sample insert site name2loc
-sub get_sample_ref_insert_site_name2loc {
-	my ($self, $sample) = @_;
-	return "$sample\_ref_insert_site_name2loc.txt";
-}
-
-# get per-sample insert site flank fwd align
-sub get_sample_ref_insert_site_flank_fwd_align {
-	my ($self, $sample) = @_;
-	return "$sample\_ref_insert_site_flank_fwd_align.water";
-}
-
-# get per-sample insert site flank rev align
-sub get_sample_ref_insert_site_flank_rev_align {
-	my ($self, $sample) = @_;
-	return "$sample\_ref_insert_site_flank_rev_align.water";
+	return "$sample\_ref_primer_softclip_space.tsv";
 }
 
 # get per-sample insert site filtered
@@ -302,10 +280,16 @@ sub get_sample_ref_insert_site_filtered {
 	return "$sample\_ref_insert_site_filtered.bed";
 }
 
-# get per-sample insert site align info
-sub get_sample_ref_insert_site_align_info {
+# get per-sample insert site uniq
+sub get_sample_ref_insert_site_uniq {
 	my ($self, $sample) = @_;
-	return "$sample\_ref_insert_site_align_info.tsv";
+	return "$sample\_ref_insert_site_uniq.bed";
+}
+
+# get per-sample ref insert site filtered uniq
+sub get_sample_ref_insert_site_filtered_uniq {
+	my ($self, $sample) = @_;
+	return "$sample\_ref_insert_site_filtered_uniq.bed";
 }
 
 # get per-sample insert site merged

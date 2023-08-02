@@ -12,6 +12,7 @@ use ITRSeqExpDesign;
 
 my $usage = "Usage: perl $0 DESIGN-FILE BASH-OUTFILE";
 my $sh_path = '/bin/bash';
+my $trim_pos_script = 'get_ITR_trim_pos.pl';
 my $cmd = "$0 " . join(" ", @ARGV);
 
 my $infile = shift or die $usage;
@@ -100,7 +101,25 @@ foreach my $sample ($design->get_sample_names()) {
 			print OUT "$cmd\n";
 		}
 		else {
-			print STDERR "Warning: ITR-trimmed FASTQ files already exists, won't override\n";
+			print STDERR "Warning: $WORK_DIR/$trout1 and $WORK_DIR/$trout2 files already exist, won't override\n";
+			print OUT "# $cmd\n";
+		}
+	}
+
+# prepare trim pos cmd
+  {
+		my $in1 = $design->get_sample_fwd_ITRtrim_file($sample);
+		my $in2 = $design->get_sample_rev_ITRtrim_file($sample);
+
+		my $out = $design->get_sample_ITRtrim_pos($sample);
+
+		my $cmd = "$SCRIPT_DIR/$trim_pos_script $WORK_DIR/$in1 $WORK_DIR/$in2 $WORK_DIR/$out";
+
+		if(!(-e "$WORK_DIR/$out")) {
+			print OUT "$cmd\n";
+		}
+		else {
+			print STDERR "Warning: $WORK_DIR/$out already exists, won't override\n";
 			print OUT "# $cmd\n";
 		}
 	}

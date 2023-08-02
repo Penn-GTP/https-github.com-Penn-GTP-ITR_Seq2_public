@@ -13,9 +13,9 @@ my $usage = "Usage: perl $0 DESIGN-FILE BASH-OUTFILE";
 my $samtools = 'samtools';
 my $bedtools = 'bedtools';
 my $cmd = "$0 " . join(" ", @ARGV);
-my @comments = qq(Sample name\tTotal reads\tITR-containing reads\tHost-mapped reads\tHost-mapped deduplexed reads\tVector-mapped reads\tHost-mapped deduplexed non-vector reads\tUnique insert sites\tUnique insert sites mispriming filtered\tMerged insert peaks\tRead abundance of insert peaks\tOn-target insert peaks\tRead abundance of on-target insert peaks\tClonal insert sites\tUMI-locus abundance of clonal insert sites\tFrequency of UMI locus abundance of clonal insert sites);
+my @comments = qq(Sample name\tTotal reads\tITR-containing reads\tHost-mapped reads\tHost-mapped deduplexed reads\tVector-mapped reads\tHost-mapped deduplexed non-vector reads\tInsert sites\tInsert sites filtered\tUnique insert sites\tUnique insert sites filtered\tMerged insert peaks\tRead abundance of insert peaks\tOn-target insert peaks\tRead abundance of on-target insert peaks\tClonal insert sites\tUMI-locus abundance of clonal insert sites\tFrequency of UMI locus abundance of clonal insert sites);
 my @headers = qw(sample_name total_read trimmed_read ref_mapped ref_mapped_dedup vec_mapped ref_mapped_dedup_novec
-insert_site_uniq insert_site_filtered
+insert_site insert_site_filtered insert_site_uniq insert_site_uniq_filtered
 peak_count peak_clone target_count target_clone clonal_count clonal_loc_count clonal_loc_freq);
 
 my $infile = shift or die $usage;
@@ -109,13 +109,23 @@ foreach my $sample ($design->get_sample_names()) {
 	}
 
 # get insert site info
-	my ($site_uniq, $site_filtered) = (0, 0);
+	my ($site, $site_filtered) = (0, 0);
+	{
+		my $in = $design->get_sample_ref_insert_site($sample);
+		$site = `cat $WORK_DIR/$in | wc -l`; chomp $site;
+
+		$in = $design->get_sample_ref_insert_site_filtered($sample);
+		$site_filtered = `cat $WORK_DIR/$in | wc -l`; chomp $site_filtered;
+	}
+
+# get insert site uniq info
+	my ($site_uniq, $site_uniq_filtered) = (0, 0);
 	{
 		my $in = $design->get_sample_ref_insert_site_uniq($sample);
 		$site_uniq = `cat $WORK_DIR/$in | wc -l`; chomp $site_uniq;
 
-		$in = $design->get_sample_ref_insert_site_filtered($sample);
-		$site_filtered = `cat $WORK_DIR/$in | wc -l`; chomp $site_filtered;
+		$in = $design->get_sample_ref_insert_site_filtered_uniq($sample);
+		$site_uniq_filtered = `cat $WORK_DIR/$in | wc -l`; chomp $site_uniq_filtered;
 	}
 
 # get peak info
@@ -173,7 +183,7 @@ foreach my $sample ($design->get_sample_names()) {
 
 # output
   print OUT "$sample\t$total_read\t$trimmed_read\t$ref_mapped\t$ref_dedup\t$vec_mapped\t$ref_novec\t",
-	"$site_uniq\t$site_filtered\t",
+	"$site\t$site_filtered\t$site_uniq\t$site_uniq_filtered\t",
 	"$peak_count\t$peak_clone\t$target_count\t$target_clone\t",
   "$clone_count\t$clone_loc_count\t", get_freq_str(%clone_loc_freq), "\n";
 }
