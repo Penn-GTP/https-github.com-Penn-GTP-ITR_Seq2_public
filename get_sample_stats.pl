@@ -1,6 +1,6 @@
 #!/bin/env perl
 # Prepare sh script for filtering reference mapping files
-our $VERSION = 'v2.2.1';
+our $VERSION = 'v2.2.2';
 
 use strict;
 use warnings;
