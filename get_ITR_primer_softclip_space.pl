@@ -27,10 +27,10 @@ while(my $line = <TRIM_IN>) {
 }
 
 # read softclip pos and output
-print OUT "qname\tprimer_from\tprimer_to\tsoftclip_from\tsoftclip_to\tspace\n";
+print OUT "qname\tprimer_from\tprimer_to\tsoftclip_from\tsoftclip_to\tref_strand\tspace\n";
 while(my $line = <CLIP_IN>) {
 	chomp $line;
-	my ($qname, $clip_from, $clip_to) = split(/\t/, $line);
+	my ($qname, $clip_from, $clip_to, $score, $ref_strand) = split(/\t/, $line);
 	if(exists $qname2primer_pos{$qname}) {
 		my ($primer_from, $primer_to) = @{$qname2primer_pos{$qname}};
 		my ($mate) = $qname =~ /\/(\d)$/;
@@ -38,7 +38,7 @@ while(my $line = <CLIP_IN>) {
 		if($primer_from < $clip_to && $primer_to > $clip_from) { # primer and clip regions overlap
 			$space = $mate == 1 ? $primer_from - $clip_from : $clip_to - $primer_to;
 		}
-		print OUT "$qname\t$primer_from\t$primer_to\t$clip_from\t$clip_to\t$space\n";
+		print OUT "$qname\t$primer_from\t$primer_to\t$clip_from\t$clip_to\t$ref_strand\t$space\n";
 	}
 }
 
