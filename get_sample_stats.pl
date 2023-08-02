@@ -13,10 +13,11 @@ my $usage = "Usage: perl $0 DESIGN-FILE BASH-OUTFILE";
 my $samtools = 'samtools';
 my $bedtools = 'bedtools';
 my $cmd = "$0 " . join(" ", @ARGV);
-my @comments = qq(Sample name\tTotal reads\tITR-containing reads\tHost-mapped reads\tHost-mapped deduplexed reads\tVector-mapped reads\tHost-mapped deduplexed non-vector reads\tInsert sites\tInsert sites filtered\tUnique insert sites\tUnique insert sites filtered\tMerged insert peaks\tRead abundance of insert peaks\tOn-target insert peaks\tRead abundance of on-target insert peaks\tClonal insert sites\tUMI-locus abundance of clonal insert sites\tFrequency of UMI locus abundance of clonal insert sites);
+my @comments = qq(Sample name\tTotal reads\tITR-containing reads\tHost-mapped reads\tHost-mapped deduplexed reads\tVector-mapped reads\tHost-mapped deduplexed non-vector reads\tInsert sites\tInsert sites filtered\tUnique insert sites\tUnique insert sites filtered\tMerged insert peaks\tRead abundance of insert peaks\tOn-target insert peaks\tRead abundance of on-target insert peaks\tOff-target insert peaks\tRead abundance of off-target insert peaks\tClonal insert sites\tUMI-locus abundance of clonal insert sites\tFrequency of UMI locus abundance of clonal insert sites);
 my @headers = qw(sample_name total_read trimmed_read ref_mapped ref_mapped_dedup vec_mapped ref_mapped_dedup_novec
 insert_site insert_site_filtered insert_site_uniq insert_site_uniq_filtered
-peak_count peak_clone target_count target_clone clonal_count clonal_loc_count clonal_loc_freq);
+peak_count peak_clone ontarget_peak_count ontarget_peak_clone offtarget_peak_count offtarget_peak_clone
+clonal_count clonal_loc_count clonal_loc_freq);
 
 my $infile = shift or die $usage;
 my $outfile = shift or die $usage;
@@ -131,10 +132,10 @@ foreach my $sample ($design->get_sample_names()) {
 # get peak info
   my ($peak_count, $peak_clone) = (0, 0);
 	{
-		my $in = $design->get_sample_ref_peak($sample);
+		my $in = $design->get_sample_ref_peak_track($sample);
 		open(BED, "<$BASE_DIR/$in") || die "Unable to open $in: $!";
 		while(my $line = <BED>) {
-			next if($line =~ /^#/);
+			next if($line =~ /^(?:#|track)/);
 			chomp $line;
 			$peak_count++;
 			my $peak_name = (split(/\t/, $line))[3];
@@ -144,33 +145,42 @@ foreach my $sample ($design->get_sample_names()) {
 		close(BED);
 	}
 
-# get target info
-	my ($target_count, $target_clone) = (0, 0);
-	my $target_file = $design->sample_opt($sample, 'target_file');
-	if(-e $target_file) { # a gene editing sample
-		my $in = $design->get_sample_ref_peak($sample);
-		if(-s "$BASE_DIR/$in") { # non-empty peaks found
-			open(BED, "$bedtools intersect -a $BASE_DIR/$in -b $target_file -wo |") || die "Unable to open $samtools intersect: $!";
-			while(my $line = <BED>) {
-				next if($line =~ /^#/);
-				chomp $line;
-				$target_count++;
-				my ($peak_name) = (split(/\t/, $line))[3];
-				my ($dedup_count) = $peak_name =~ /ReadCount=(\d+)/;
-				$target_clone += $dedup_count;
-			}
-			close(BED);
+# get on/off-target peak info
+	my ($ontarget_count, $ontarget_clone, $offtarget_count, $offtarget_clone) = (0, 0, 0, 0);
+	{
+		my $on_in = $design->get_sample_ref_peak_track_ontarget($sample);
+		my $off_in = $design->get_sample_ref_peak_track_offtarget($sample);
+
+		open(ON, "<$BASE_DIR/$on_in") || die "Unable to open $on_in: $!";
+		while(my $line = <ON>) {
+			next if($line =~ /^(?:#|track)/);
+			chomp $line;
+			$ontarget_count++;
+			my $peak_name = (split(/\t/, $line))[3];
+			my ($dedup_count) = $peak_name =~ /ReadCount=(\d+)/;
+			$ontarget_clone += $dedup_count;
 		}
+		close(ON);
+		open(OFF, "<$BASE_DIR/$off_in") || die "Unable to open $off_in: $!";
+		while(my $line = <OFF>) {
+			next if($line =~ /^(?:#|track)/);
+			chomp $line;
+			$offtarget_count++;
+			my $peak_name = (split(/\t/, $line))[3];
+			my ($dedup_count) = $peak_name =~ /ReadCount=(\d+)/;
+			$offtarget_clone += $dedup_count;
+		}
+		close(OFF);
 	}
 
 # get clone info
 	my ($clone_count, $clone_loc_count) = (0, 0, 0);
 	my %clone_loc_freq;
 	{
-		my $in = $design->get_sample_ref_clone($sample);
+		my $in = $design->get_sample_ref_clone_track($sample);
 		open(BED, "<$BASE_DIR/$in") || die "Unable to open $in: $!";
 		while(my $line = <BED>) {
-			next if($line =~ /^#/);
+			next if($line =~ /^(?:#|track)/);
 			chomp $line;
 			my ($clone_name) = (split(/\t/, $line))[3];
 			my ($loc_count) = $clone_name =~ /LocCount=(\d+)/;
@@ -184,7 +194,7 @@ foreach my $sample ($design->get_sample_names()) {
 # output
   print OUT "$sample\t$total_read\t$trimmed_read\t$ref_mapped\t$ref_dedup\t$vec_mapped\t$ref_novec\t",
 	"$site\t$site_filtered\t$site_uniq\t$site_uniq_filtered\t",
-	"$peak_count\t$peak_clone\t$target_count\t$target_clone\t",
+	"$peak_count\t$peak_clone\t$ontarget_count\t$ontarget_clone\t$offtarget_count\t$offtarget_clone\t",
   "$clone_count\t$clone_loc_count\t", get_freq_str(%clone_loc_freq), "\n";
 }
 

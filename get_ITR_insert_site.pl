@@ -86,7 +86,7 @@ while(my $line = <IN>) {
 			$insert_pos = $strand eq '-' ? $end : $start;
 		}
 		print LOC "$chr\t", ($insert_pos - $insert_size / 2), "\t", ($insert_pos + $insert_size / 2), "\t$qname/$mate\t$mapQ\t$strand\n";
-		print POS "$qname/$mate\t$clip_from\t$clip_to\t$mapQ\t+\n";
+		print POS "$qname/$mate\t$clip_from\t$clip_to\t$mapQ\t$strand\n";
 	}
 }
 

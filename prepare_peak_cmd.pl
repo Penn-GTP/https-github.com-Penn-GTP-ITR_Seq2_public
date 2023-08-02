@@ -35,6 +35,7 @@ my $KEEP_UNPAIR = $design->get_global_opt('KEEP_UNPAIR');
 my $KEEP_STRAND = $design->get_global_opt('KEEP_STRAND');
 my $MAX_PEAK_DIST = $design->get_global_opt('MAX_PEAK_DIST');
 my $MIN_SPACE = $design->get_global_opt('MIN_SPACE');
+#my $ONTARGET_FLANK = $design->get_global_opt('ONTARGET_FLANK');
 
 my $DEFAULT_MIN_CLONE_LOC = 2;
 
@@ -109,7 +110,7 @@ foreach my $sample ($design->get_sample_names()) {
 		my $space = $design->get_sample_ref_primer_softclip_space($sample);
 		my $out = $design->get_sample_ref_insert_site_filtered($sample);
 
-		my $cmd = "awk 'BEGIN{FS=\"\\t\"} (NR == FNR && FNR > 1 && \$6 != \"NA\" && \$6 >= $MIN_SPACE) {ID[\$1]; next} (\$4 in ID)' $WORK_DIR/$space $WORK_DIR/$in > $WORK_DIR/$out";
+		my $cmd = "awk 'BEGIN{FS=\"\\t\"} (NR == FNR && FNR > 1 && \$NF != \"NA\" && \$NF >= $MIN_SPACE) {ID[\$1]; next} (\$4 in ID)' $WORK_DIR/$space $WORK_DIR/$in > $WORK_DIR/$out";
 		if(!-e "$WORK_DIR/$out") {
 			print OUT "$cmd\n";
 		}
@@ -171,13 +172,13 @@ foreach my $sample ($design->get_sample_names()) {
 	{
 		my $in = $design->get_sample_ref_insert_site_merged($sample);
 		my $out = $design->get_sample_ref_peak($sample);
-		my $cmd = "$SCRIPT_DIR/$peak_script $WORK_DIR/$in $BASE_DIR/$out --keep-strand $KEEP_STRAND";
+		my $cmd = "$SCRIPT_DIR/$peak_script $WORK_DIR/$in $WORK_DIR/$out --keep-strand $KEEP_STRAND";
 
-		if(!-e "$BASE_DIR/$out") {
+		if(!-e "$WORK_DIR/$out") {
 			print OUT "$cmd\n";
 		}
 		else {
-			print STDERR "Warning: $BASE_DIR/$out exists, won't override\n";
+			print STDERR "Warning: $WORK_DIR/$out exists, won't override\n";
 			print OUT "# $cmd\n";
 		}
 	}
@@ -188,13 +189,13 @@ foreach my $sample ($design->get_sample_names()) {
 		my $aln_in = $design->get_sample_ref_novec_file($sample);
 		my $out = $design->get_sample_ref_clone($sample);
 		my $min_clone_loc = $design->sample_opt($sample, 'min_clone_loc') ? $design->sample_opt($sample, 'min_clone_loc') : $DEFAULT_MIN_CLONE_LOC;
-		my $cmd = "$SCRIPT_DIR/$clone_script $WORK_DIR/$site_in $BASE_DIR/$aln_in $BASE_DIR/$out --min-loc $min_clone_loc";
+		my $cmd = "$SCRIPT_DIR/$clone_script $WORK_DIR/$site_in $BASE_DIR/$aln_in $WORK_DIR/$out --min-loc $min_clone_loc";
 
-		if(!-e "$BASE_DIR/$out") {
+		if(!-e "$WORK_DIR/$out") {
 			print OUT "$cmd\n";
 		}
 		else {
-			print STDERR "Warning: $BASE_DIR/$out exists, won't override\n";
+			print STDERR "Warning: $WORK_DIR/$out exists, won't override\n";
 			print OUT "# $cmd\n";
 		}
 	}

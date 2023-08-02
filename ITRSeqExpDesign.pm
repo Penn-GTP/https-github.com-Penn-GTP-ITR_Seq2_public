@@ -24,7 +24,8 @@ our %GLOBAL_OPTS = (
 	MIN_SPACE => 8,
 	KEEP_UNPAIR => 1,
 	KEEP_STRAND => 3,
-	MAX_PEAK_DIST => 44
+	MAX_PEAK_DIST => 44,
+	ONTARGET_FLANK => 500
 );
   
 # Constructor taking a filehandle or a filename
@@ -338,13 +339,25 @@ sub get_sample_vec_dbname {
 	return "$name\_vec_seq_masked";
 }
 
-# get per-sample ref peak track file
+# get per-sample ref peak track
 sub get_sample_ref_peak_track {
 	my ($self, $sample) = @_;
 	return "$sample\_ref_peak_track.bed";
 }
 
-# get per-sample ref clone track file
+# get per-sample ref peak track ontarget
+sub get_sample_ref_peak_track_ontarget {
+	my ($self, $sample) = @_;
+	return "$sample\_ref_peak_track_ontarget.bed";
+}
+
+# get per-sample ref peak track offtarget
+sub get_sample_ref_peak_track_offtarget {
+	my ($self, $sample) = @_;
+	return "$sample\_ref_peak_track_offtarget.bed";
+}
+
+# get per-sample ref clone track
 sub get_sample_ref_clone_track {
 	my ($self, $sample) = @_;
 	return "$sample\_ref_clone_track.bed";
@@ -354,6 +367,18 @@ sub get_sample_ref_clone_track {
 sub get_sample_ref_peak_anno {
 	my ($self, $sample) = @_;
 	return "$sample\_ref_peak_anno.tsv";
+}
+
+# get per-sample ref peak anno ontarget
+sub get_sample_ref_peak_anno_ontarget {
+	my ($self, $sample) = @_;
+	return "$sample\_ref_peak_anno_ontarget.tsv";
+}
+
+# get per-sample ref peak anno offtarget
+sub get_sample_ref_peak_anno_offtarget {
+	my ($self, $sample) = @_;
+	return "$sample\_ref_peak_anno_offtarget.tsv";
 }
 
 # get per-sample ref clone anno

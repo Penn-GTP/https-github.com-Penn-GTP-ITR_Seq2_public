@@ -27,6 +27,7 @@ my $SCRIPT_DIR = $design->get_global_opt('SCRIPT_DIR');
 #my $DEMUX_DIR = $design->get_global_opt('DEMUX_DIR');
 my $WORK_DIR = $design->get_global_opt('WORK_DIR');
 #my $UMI_LEN = $design->get_global_opt('UMI_LEN');
+my $ONTARGET_FLANK = $design->get_global_opt('ONTARGET_FLANK');
 
 # check required directories
 if(!(-e $BASE_DIR && -d $BASE_DIR)) {
@@ -57,43 +58,9 @@ foreach my $sample ($design->get_sample_names()) {
 		my $in = $design->get_sample_ref_peak($sample);
 		my $out = $design->get_sample_ref_peak_track($sample);
 
-		my $cmd = "$SCRIPT_DIR/$track_script $BASE_DIR/$in $BASE_DIR/$out --name $sample";
+		my $cmd = "$SCRIPT_DIR/$track_script $WORK_DIR/$in $BASE_DIR/$out --name $sample";
 
 		if(!(-e "$BASE_DIR/$out")) {
-			print OUT "$cmd\n";
-		}
-		else {
-			print STDERR "Warning: annotated ref map file already exists, won't override\n";
-			print OUT "# $cmd\n";
-		}
-	}
-
-# prepare annotate peak cmd
-  {
-		my $in = $design->get_sample_ref_peak_track($sample);
-		my $gff = $design->sample_opt($sample, 'ref_gff');
-		my $out = $design->get_sample_ref_peak_anno($sample);
-		my $opts = $design->sample_opt($sample, 'anno_opts');
-
-		my $cmd = "$SCRIPT_DIR/$anno_script $gff $BASE_DIR/$in $BASE_DIR/$out $opts";
-
-		if(!(-e "$BASE_DIR/$out")) {
-			print OUT "$cmd\n";
-		}
-		else {
-			print STDERR "Warning: peak annotation already exists, won't override\n";
-			print OUT "# $cmd\n";
-		}
-	}
-
-# prepare clone track cmd
-	{
-		my $in = $design->get_sample_ref_clone($sample);
-		my $out = $design->get_sample_ref_clone_track($sample);
-
-		my $cmd = "$SCRIPT_DIR/$track_script $BASE_DIR/$in $BASE_DIR/$out --name $sample";
-
-		if(!-e "$BASE_DIR/$out") {
 			print OUT "$cmd\n";
 		}
 		else {
@@ -102,8 +69,76 @@ foreach my $sample ($design->get_sample_names()) {
 		}
 	}
 
+# prepare clone track cmd
+  {
+		my $in = $design->get_sample_ref_clone($sample);
+		my $out = $design->get_sample_ref_clone_track($sample);
+
+		my $cmd = "$SCRIPT_DIR/$track_script $WORK_DIR/$in $BASE_DIR/$out --name $sample";
+
+		if(!(-e "$BASE_DIR/$out")) {
+			print OUT "$cmd\n";
+		}
+		else {
+			print STDERR "Warning: $BASE_DIR/$out already exists, won't override\n";
+			print OUT "# $cmd\n";
+		}
+	}
+
+# prepare get on/off-target peak tracks cmd
+  {
+    my $in = $design->get_sample_ref_peak_track($sample);
+    my $on_out = $design->get_sample_ref_peak_track_ontarget($sample);
+    my $off_out = $design->get_sample_ref_peak_track_offtarget($sample);
+    my $target_file = $design->sample_opt($sample, 'target_file');
+
+    my $cmd;
+    if(defined $target_file) {
+      $cmd = "$bedtools window -a $BASE_DIR/$in -b $target_file -w $ONTARGET_FLANK -header > $BASE_DIR/$on_out";
+      $cmd .= "\n$bedtools window -a $BASE_DIR/$in -b $target_file -w $ONTARGET_FLANK -v -header > $BASE_DIR/$off_out";
+    }
+    else {
+      $cmd = "touch $BASE_DIR/$on_out";
+      $cmd = "cp $BASE_DIR/$in $BASE_DIR/$off_out";
+    }
+
+    if(!(-e "$BASE_DIR/$on_out" && -e "$BASE_DIR/$off_out")) {
+      print OUT "$cmd\n";
+    }
+    else {
+      print STDERR "Warning: $BASE_DIR/$on_out $BASE_DIR/$off_out exist, won't override\n";
+      $cmd =~ s/\n/\n# /sg;
+      print OUT "# $cmd\n";
+    }
+  }
+
+# prepare annotate peaks cmd
+  {
+		my $in = $design->get_sample_ref_peak_track($sample);
+		my $on_in = $design->get_sample_ref_peak_track_ontarget($sample);
+		my $off_in = $design->get_sample_ref_peak_track_offtarget($sample);
+		my $gff = $design->sample_opt($sample, 'ref_gff');
+		my $out = $design->get_sample_ref_peak_anno($sample);
+		my $on_out = $design->get_sample_ref_peak_anno_ontarget($sample);
+		my $off_out = $design->get_sample_ref_peak_anno_offtarget($sample);
+		my $opts = $design->sample_opt($sample, 'anno_opts');
+
+		my $cmd = "$SCRIPT_DIR/$anno_script $gff $BASE_DIR/$in $BASE_DIR/$out $opts";
+		$cmd .= "\n$SCRIPT_DIR/$anno_script $gff $BASE_DIR/$on_in $BASE_DIR/$on_out $opts";
+		$cmd .= "\n$SCRIPT_DIR/$anno_script $gff $BASE_DIR/$off_in $BASE_DIR/$off_out $opts";
+
+		if(!(-e "$BASE_DIR/$out" && -e "$BASE_DIR/$on_out" && -e "$BASE_DIR/$off_out")) {
+			print OUT "$cmd\n";
+		}
+		else {
+			print STDERR "Warning: $BASE_DIR/$out, $BASE_DIR/$on_out, $BASE_DIR/$off_out already exist, won't override\n";
+      $cmd =~ s/\n/\n# /sg;
+			print OUT "# $cmd\n";
+		}
+	}
+
 # prepare annotate clone cmd
-	{
+  {
 		my $in = $design->get_sample_ref_clone_track($sample);
 		my $gff = $design->sample_opt($sample, 'ref_gff');
 		my $out = $design->get_sample_ref_clone_anno($sample);
@@ -115,7 +150,7 @@ foreach my $sample ($design->get_sample_names()) {
 			print OUT "$cmd\n";
 		}
 		else {
-			print STDERR "Warning: peak annotation already exists, won't override\n";
+			print STDERR "Warning: $BASE_DIR/$out already exists, won't override\n";
 			print OUT "# $cmd\n";
 		}
 	}
