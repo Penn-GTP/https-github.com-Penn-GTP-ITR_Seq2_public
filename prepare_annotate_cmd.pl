@@ -95,7 +95,7 @@ foreach my $sample ($design->get_sample_names()) {
     my $cmd;
     if($target_file) {
       $cmd = "$bedtools window -a $BASE_DIR/$in -b $target_file -w $ONTARGET_FLANK -u -header > $BASE_DIR/$on_out";
-      $cmd .= "\n$bedtools window -a $BASE_DIR/$in -b $target_file -w $ONTARGET_FLANK -u -v -header > $BASE_DIR/$off_out";
+      $cmd .= "\n$bedtools window -a $BASE_DIR/$in -b $target_file -w $ONTARGET_FLANK -v -header > $BASE_DIR/$off_out";
     }
     else {
       $cmd = "touch $BASE_DIR/$on_out";
