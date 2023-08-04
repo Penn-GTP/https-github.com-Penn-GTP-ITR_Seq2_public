@@ -85,11 +85,7 @@ you will have to create or link the directories manually before running this pip
 - **KEEP\_UNPAIR**: beside paired mapped reference reads, which additional strand to keep, 0 for none, 1 for forward, 2 for reverse and 3 for both [default 1]
 - **KEEP\_STRAND**: strand(s) required for peaks, 0: no requirement, 1 forward, 2: reverse, 3: both, we recommend use 3 for gene-editing and 0 for gene-therapy [default 3]
 - **MAX\_PEAK\_DIST**: maximum distance allowed for merging multiple insertion sites into peaks, we recommend use 2 X known target size [default 44]
-- **PRIMER\_FLANK**: size of flanking sequences of unique ITR-insertion sites for checking and filtering "mispriming" false-positives
-- **PRIMER\_ALN\_OPTS**: other options passed to the local pairwise sequence aligner between primers (and their reverse-complements) and the insertion site flanking sequences, i.e. '-gapextend 1' [default NULL]
-- **PRIMER\_SEED\_LEN**: seed length of the primer-flanking alignments (3' of the primer or 5' of the revcom of the primer) to searching for defining a mispriming [default 10]
-- **PRIMER\_MAX\_SEED\_ERROR**: max seed error for defining a mispriming, we recommand 0.1 for gene-therapy or gene-editing samples, and 0.2 for wtAAV samples (multiple primer-version)
-- **PRIMER\_MIN\_MATCH**: minimum aligned primer bases for defining a mispriming [default 12]
+- **ONTARGET\_FLANK**: up/down-stream flank size of the target_file as on-target region [default 500]
 
 #### Per-sample options
 - **sample\_name**: unique sample name
@@ -155,6 +151,7 @@ you will have to create or link the directories manually before running this pip
    - ITR-primer containing FASTQ files: `WORK_DIR/SAMPLE_R1_trimmed.fastq.gz` and `WORK_DIR/SAMPLE_R2_trimmed.fastq.gz`
    - ITR-primer non-containing FASTQ files: `WORK_DIR/SAMPLE_R1_untrimmed.fastq.gz` and `WORK_DIR/SAMPLE_R2_untrimmed.fastq.gz`
    - Too short reads after ITR-primer trimming: `WORK_DIR/SAMPLE_R1_short.fastq.gz` and `WORK_DIR/SAMPLE_R2_short.fastq.gz`
+   - ITR-primer mapped region in trimmed read-pairs: `WORK/SAMPLE_ITRtrim_pos.bedpe`
        
 ## Step MAP -- Map ITR-containing reads to host and vector sequences
 - Prepare MAP cmds by running:
@@ -194,8 +191,8 @@ you will have to create or link the directories manually before running this pip
    - On a regular Linux server: `./peak.sh > peak.log 2>&1`
    
 - Output for each **SAMPLE**:
-   - Called ITR-peaks in BED format: `BASE_DIR/SAMPLE_ref_peak.bed`, only sensible for gene-editing samples
-   - Called ITR-clonal sites (clones) in BED format: `BASE_DIR/SAMPLE_ref_clone.bed`, only sensible for gene-therapy samples
+   - Called ITR-peaks in BED format: `WORK_DIR/SAMPLE_ref_peak.bed`, only sensible for gene-editing samples
+   - Called ITR-clonal sites (clones) in BED format: `WORK_DIR/SAMPLE_ref_clone.bed`, only sensible for gene-therapy samples
 
 ## Step ANNOTATE -- annotate called peaks/clonal-sites
 - Prepare ANNO cmds by running:
@@ -208,10 +205,10 @@ you will have to create or link the directories manually before running this pip
    - On a regular Linux server: `./annotate.sh > annotate.log 2>&1`
    
 - Output for each **SAMPLE**, note that "peak" files are only sensible for gene-editing samples and "clone" files are for gene-therapy samples:
-   - peak track file in BED format for IGV display: `BASE_DIR/SAMPLE_ref_peak_track.bed`
-   - peak annotation file in TSV format with closeset/overlapping genetic feature details: `BASE_DIR/SAMPLE_ref_peak_anno.tsv`
-   - clone track file in BED format for IGV display: `BASE_DIR/SAMPLE_ref_clone_track.bed`
-   - clone annotation file in TSV format with closeset/overlapping genetic feature details: `BASE_DIR/SAMPLE_ref_clone_anno.tsv`
+   - peak track files in BED format with UCSC track info: `BASE_DIR/SAMPLE_ref_peak_track.bed`, `BASE_DIR/SAMPLE_ref_peak_track_ontarget.bed`, `BASE_DIR/SAMPLE_ref_peak_track_offtarget.bed`
+   - peak annotation files in TSV format with closest genetic feature details: `BASE_DIR/SAMPLE_ref_peak_anno.tsv`, `BASE_DIR/SAMPLE_ref_peak_anno_ontarget.tsv`, `BASE_DIR/SAMPLE_ref_peak_anno_offtarget.tsv`
+   - clone track file in BED format with UCSC track info: `BASE_DIR/SAMPLE_ref_clone_track.bed`
+   - clone annotation file in TSV format with closest/overlapping genetic feature details: `BASE_DIR/SAMPLE_ref_clone_anno.tsv`
    
 - Output for the entire experiment/run:
    - PROJECT statistics summary in TSV format: `PROJECT_ID_EXP_DESIGN_sample_stats.tsv`, it includes the following tab-delimited fields for each SAMPLE
@@ -222,18 +219,22 @@ you will have to create or link the directories manually before running this pip
       - **ref\_mapped\_dedup**: Host-mapped deduplexed reads 
       - **vec\_mapped**: Vector-mapped reads
       - **ref\_mapped\_dedup\_novec**: Host-mapped deduplexed non-vector reads
+      - **insert\_site**: Insert sites
+      - **insert\_site\_filtered**: Insert sites filtered
       - **insert\_site\_unique**: Unique insert sites
-      - **insert\_site\_filtered**: Unique insert sites mispriming filtered
+      - **insert\_site\_filtered**: Unique insert sites filtered
       - **peak\_count**: Merged insert peaks
       - **peak\_clone**: Read abundance of insert peaks
-      - **target\_count**: On-target insert peaks
-      - **target\_clone**: Read abundance of on-target insert peaks
+      - **ontarget\_peak\_count**: On-target insert peaks
+      - **ontarget\_peak\_clone**: Read abundance of on-target insert peaks
+      - **offtarget\_peak\_count**: Off-target insert peaks
+      - **offtarget\_peak\_clone**: Read abundance of off-target insert peaks
       - **clonal\_count**: Clonal insert sites
       - **clonal\_loc\_count**: UMI-locus abundance of clonal insert sites
       - **clonal\_loc\_freq**: Frequency of UMI locus abundance of clonal insert sites
-      
 
- 
+---
+
 ## Notes:
 - Some common options for the LSF `bsub` is explained below, try `man bsub` for more options and details:
    - `-J`: Job name (for display only)
