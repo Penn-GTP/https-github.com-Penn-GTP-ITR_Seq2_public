@@ -93,13 +93,13 @@ foreach my $sample ($design->get_sample_names()) {
     my $target_file = $design->sample_opt($sample, 'target_file');
 
     my $cmd;
-    if(defined $target_file) {
+    if($target_file) {
       $cmd = "$bedtools window -a $BASE_DIR/$in -b $target_file -w $ONTARGET_FLANK -header > $BASE_DIR/$on_out";
       $cmd .= "\n$bedtools window -a $BASE_DIR/$in -b $target_file -w $ONTARGET_FLANK -v -header > $BASE_DIR/$off_out";
     }
     else {
       $cmd = "touch $BASE_DIR/$on_out";
-      $cmd = "cp $BASE_DIR/$in $BASE_DIR/$off_out";
+      $cmd .= "\ncp $BASE_DIR/$in $BASE_DIR/$off_out";
     }
 
     if(!(-e "$BASE_DIR/$on_out" && -e "$BASE_DIR/$off_out")) {
