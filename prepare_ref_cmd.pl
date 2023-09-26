@@ -1,6 +1,6 @@
 #!/bin/env perl
 # Prepare bash script for building REF database
-our $VERSION = 'v2.2.2';
+our $VERSION = 'v2.2.3';
 our $ENV_FILE = 'set_ref_env.sh';
 
 use strict;
@@ -58,7 +58,7 @@ print OUT qq(# CMD:"$cmd"\n# VER:$VERSION\n);
 print OUT "source $SCRIPT_DIR/$ENV_FILE\n\n";
 
 # prepare ITR primer seq, if not provided
-if(!(-s $design->get_global_opt('PRIMER_FILE')) && $design->get_global_opt('ITR_PRIMER')) {
+if(!(-s $design->get_global_opt('PRIMER_FILE')) && $design->get_global_opt('ITR_PRIMER') && -s $design->get_global_opt('ITR_PRIMER')) {
 	my $primer_seq = $design->get_global_opt('ITR_PRIMER');
 	my $out = $design->get_global_primer_fwd();
 	my $cmd = qq(echo -e ">GSP3\\n$primer_seq" > $BASE_DIR/$out;\n\n);
@@ -72,7 +72,7 @@ if(!(-s $design->get_global_opt('PRIMER_FILE')) && $design->get_global_opt('ITR_
 }
 
 # prepare revcom of primer sequence
-{
+if(-s $design->get_global_opt('PRIMER_FILE')) {
 	my $in = $design->get_global_primer_fwd();
 	my $out = $design->get_global_primer_rev();
 	my $cmd = "$seqret -sequence $BASE_DIR/$in -outseq $BASE_DIR/$out -srev";

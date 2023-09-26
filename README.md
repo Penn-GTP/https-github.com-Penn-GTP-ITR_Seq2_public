@@ -94,6 +94,7 @@ you will have to create or link the directories manually before running this pip
 - **fastq\_I1**: filename of forward FASTQ index (I1), .gz or .bz2 files are accepted
 - **fastq\_I2**: filename of reverse FASTQ index (I2), .gz or .bz2 files are accepted
 - **vector\_file**: Vector sequence(s) file in GenBank format
+- **primer\_file**: path to per-sample ITR-specific primer sequence(s), override the global **PRIMER\_FILE** if provided
 - **trim\_prog**: program used to identify ITR-primer containing reads (5' of R2, 3' of R1), now only supports 'cutadapt'
 - **max\_error\_rate**: maximum error rate allowed for identifying ITR-primer containing reads (recommend 0.1)
 - **min\_len**: minimum length after trimming, no effect for the current version of this pipeline

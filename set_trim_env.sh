@@ -8,4 +8,6 @@
 #module load R # latest R for statistics and visulization
 
 # set envs
-export PATH=$PATH:/project/gtplab/apps/cutadapt-3.4/bin
+PATH=$PATH:/project/gtplab/apps/bin # seqret
+PATH=$PATH:/project/gtplab/apps/cutadapt-3.4/bin # cutadapt
+export PATH

@@ -1,6 +1,6 @@
 #!/bin/env perl
 # Prepare bash script for trimming/identifying ITR adapter seq from R1 and R2 reads
-our $VERSION = 'v2.2.2';
+our $VERSION = 'v2.2.3';
 our $ENV_FILE = 'set_trim_env.sh';
 
 use strict;
@@ -12,6 +12,7 @@ use ITRSeqExpDesign;
 
 my $usage = "Usage: perl $0 DESIGN-FILE BASH-OUTFILE";
 my $sh_path = '/bin/bash';
+my $seqret = 'seqret';
 my $trim_pos_script = 'get_ITR_trim_pos.pl';
 my $cmd = "$0 " . join(" ", @ARGV);
 
@@ -53,6 +54,7 @@ print OUT qq(# CMD:"$cmd"\n# VER:$VERSION\n);
 # set env
 print OUT "source $SCRIPT_DIR/$ENV_FILE\n\n";
 
+my %primer_seen;
 foreach my $sample ($design->get_sample_names()) {
 	my $trim_prog = $design->sample_opt($sample, 'trim_prog');
 	my $max_error = $design->sample_opt($sample, 'max_error_rate');
@@ -68,6 +70,23 @@ foreach my $sample ($design->get_sample_names()) {
   {
 		my $primer_fwd = $design->get_global_primer_fwd();
 		my $primer_rev = $design->get_global_primer_rev();
+
+		if($design->sample_opt($sample, 'primer_file')) { # per-sample primer file provided
+			$primer_fwd = $design->sample_opt($sample, 'primer_file');
+			$primer_rev = "$primer_fwd.revcom";
+# generate rev primer seq
+			if(!exists $primer_seen{$primer_fwd}) {
+				my $cmd = "$seqret -sequence $BASE_DIR/$primer_fwd -outseq $BASE_DIR/$primer_rev -srev";
+				if(!-e "$BASE_DIR/$primer_rev") {
+					print OUT "$cmd\n";
+				}
+				else {
+					print STDERR "Warning: $BASE_DIR/$primer_rev exists, won't override\n";
+					print OUT "# $cmd\n";
+				}
+				$primer_seen{$primer_fwd}++;
+			}
+		}
 
     # find min_overlap as the min length of primers
 		my $min_overlap = 0;
