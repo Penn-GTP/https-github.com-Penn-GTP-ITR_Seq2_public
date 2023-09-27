@@ -1,6 +1,6 @@
 #!/bin/env perl
 # Prepare sh script for getting ITR peaks from filtered alignments
-our $VERSION = 'v2.2.3';
+our $VERSION = 'v2.2.4';
 our $ENV_FILE = 'set_peak_env.sh';
 
 use strict;
@@ -69,6 +69,9 @@ foreach my $sample ($design->get_sample_names()) {
 		my $loc_out = $design->get_sample_ref_insert_site($sample); 
 		my $pos_out = $design->get_sample_ref_softclip_pos($sample); 
 		my $primer_file = $design->get_global_primer_fwd();
+		if($design->sample_opt($sample, 'primer_file')) {
+			$primer_file = $design->sample_opt($sample, 'primer_file');
+		}
 		my $clip_len = 0;
 		my $seq_in = new Bio::SeqIO(-file => "<$BASE_DIR/$primer_file", -format => 'fasta');
 		while(my $seq_obj = $seq_in->next_seq()) {

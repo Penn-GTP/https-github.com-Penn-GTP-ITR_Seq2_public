@@ -1,6 +1,6 @@
 #!/bin/env perl
 # Prepare bash script for annotating ITR-peaks
-our $VERSION = 'v2.2.3';
+our $VERSION = 'v2.2.4';
 our $ENV_FILE = 'set_annotate_env.sh';
 
 use strict;

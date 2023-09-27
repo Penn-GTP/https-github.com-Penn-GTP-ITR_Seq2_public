@@ -19,6 +19,8 @@ if(!(0 <= $keep_strand && $keep_strand <= 3)) {
 	exit;
 }
 
+my $min_count = $keep_strand == 3 ? 2 : 1; # require 2 UMI reads if both strand requested
+
 open(IN, "<$infile") || die "Unable to open $infile: $!";
 open(OUT, ">$outfile") || die "Unable to write to $outfile: $!";
 
@@ -56,7 +58,7 @@ while(my $line = <IN>) {
 
 
 # filter input
-	if($keep_strand == 0 || ($strand_bit & $keep_strand) >= $keep_strand) {
+	if($read_count >= $min_count && ($keep_strand == 0 || ($strand_bit & $keep_strand) >= $keep_strand)) {
 		my $name = "$chr:$start-$end";
 		my $peak_name = qq(Name=$name;ReadCount=$read_count;ReadStrandCounts=$fwd_plus,$fwd_minus|$rev_plus,$rev_minus;);
 	  print OUT "$chr\t$start\t$end\t$peak_name\t$score\t.\n";

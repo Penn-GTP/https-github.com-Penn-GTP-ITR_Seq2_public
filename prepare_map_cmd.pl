@@ -1,6 +1,6 @@
 #!/bin/env perl
 # Prepare bash script for remapping trimmed reads to reference genome database
-our $VERSION = 'v2.2.3';
+our $VERSION = 'v2.2.4';
 our $ENV_FILE = 'set_map_env.sh';
 
 use strict;
