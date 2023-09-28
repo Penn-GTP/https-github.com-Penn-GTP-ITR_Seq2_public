@@ -42,51 +42,63 @@ if(!($min_softclip > 0)) {
 
 # open BAM input
 my $flags = $keep_dup ? "" : "-F 0x400";
-open(IN, "samtools view $flags $infile | ") || die "Unable to open $infile: $!";
+open(IN, "samtools view -h $flags $infile | ") || die "Unable to open $infile: $!";
 open(LOC, ">$loc_outfile") || die "Unable to write to $loc_outfile: $!";
 open(POS, ">$pos_outfile") || die "Unable to write to $pos_outfile: $!";
 
 # read and output
+my %chr2len;
 while(my $line = <IN>) {
 	chomp $line;
-	my ($qname, $flag, $chr, $start, $mapQ, $cigar, $rnext, $pnext, $tlen, $seq, $qual) = split(/\t/, $line);
-	my $qlen = length($seq);
-	my $strand = ($flag & 0x10) ? '-' : '+';
-	my $mate = ($flag & 0x40) ? 1 : 2;
-	$start--; # use 0-based start
-	my $clip_end;
-	if($mate == 1) {
-		$clip_end = $strand eq '+' ? 3 : 5;
+	if($line =~ /^@/) {
+		if($line =~ /^\@SQ\s+SN:(\S+)\s+LN:(\d+)/) {
+			$chr2len{$1} = $2;
+		}
 	}
 	else {
-		$clip_end = $strand eq '-' ? 3 : 5;
-	}
-
-	my $align_len = get_align_len_from_cigar($cigar);
-	my $clip_len = get_clip_len_from_cigar($cigar, $clip_end);
-	my $end = $start + $align_len;
-
-	my $clip_from = -1;
-	my $clip_to = -1;
-	if($clip_len >= $min_softclip) {
-		if($clip_end == 5 && $strand eq '+' || $clip_end == 3 && $strand eq '-') {
-			$clip_from = 0;
-			$clip_to = $clip_from + $clip_len;
-		}
-		else {
-			$clip_to = $qlen;
-			$clip_from = $clip_to - $clip_len;
-		}
-
-		my $insert_pos;
+		my ($qname, $flag, $chr, $start, $mapQ, $cigar, $rnext, $pnext, $tlen, $seq, $qual) = split(/\t/, $line);
+		my $qlen = length($seq);
+		my $strand = ($flag & 0x10) ? '-' : '+';
+		my $mate = ($flag & 0x40) ? 1 : 2;
+		$start--; # use 0-based start
+			my $clip_end;
 		if($mate == 1) {
-			$insert_pos = $strand eq '+' ? $end : $start;
+			$clip_end = $strand eq '+' ? 3 : 5;
 		}
 		else {
-			$insert_pos = $strand eq '-' ? $end : $start;
+			$clip_end = $strand eq '-' ? 3 : 5;
 		}
-		print LOC "$chr\t", ($insert_pos - $insert_size / 2), "\t", ($insert_pos + $insert_size / 2), "\t$qname/$mate\t$mapQ\t$strand\n";
-		print POS "$qname/$mate\t$clip_from\t$clip_to\t$mapQ\t$strand\n";
+
+		my $align_len = get_align_len_from_cigar($cigar);
+		my $clip_len = get_clip_len_from_cigar($cigar, $clip_end);
+		my $end = $start + $align_len;
+
+		my $clip_from = -1;
+		my $clip_to = -1;
+		if($clip_len >= $min_softclip) {
+			if($clip_end == 5 && $strand eq '+' || $clip_end == 3 && $strand eq '-') {
+				$clip_from = 0;
+				$clip_to = $clip_from + $clip_len;
+			}
+			else {
+				$clip_to = $qlen;
+				$clip_from = $clip_to - $clip_len;
+			}
+
+			my $insert_pos;
+			if($mate == 1) {
+				$insert_pos = $strand eq '+' ? $end : $start;
+			}
+			else {
+				$insert_pos = $strand eq '-' ? $end : $start;
+			}
+			my $insert_start = $insert_pos - $insert_size / 2;
+			my $insert_end = $insert_pos + $insert_size / 2;
+			if(0 <= $insert_start && $insert_end <= $chr2len{$chr}) {
+				print LOC "$chr\t$insert_start\t$insert_end\t$qname/$mate\t$mapQ\t$strand\n";
+				print POS "$qname/$mate\t$clip_from\t$clip_to\t$mapQ\t$strand\n";
+			}
+		}
 	}
 }
 
