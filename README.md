@@ -222,8 +222,8 @@ you will have to create or link the directories manually before running this pip
       - **ref\_mapped\_dedup\_novec**: Host-mapped deduplexed non-vector reads
       - **insert\_site**: Insert sites
       - **insert\_site\_filtered**: Insert sites filtered
-      - **insert\_site\_unique**: Unique insert sites
-      - **insert\_site\_filtered**: Unique insert sites filtered
+      - **insert\_site\_uniq**: Unique insert sites
+      - **insert\_site\_uniq\_filtered**: Unique insert sites filtered
       - **peak\_count**: Merged insert peaks
       - **peak\_clone**: Read abundance of insert peaks
       - **ontarget\_peak\_count**: On-target insert peaks
